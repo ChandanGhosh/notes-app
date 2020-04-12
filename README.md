@@ -3,6 +3,8 @@ Cli based simple note taking app using Go
 
 ## install
 go get -u https://github.com/ChandanGhosh/notes-app
+
+
 Navigate to notes-app folder and run `go install` to run as a binary
 
 ## Cli
