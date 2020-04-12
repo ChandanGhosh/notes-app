@@ -12,6 +12,7 @@ import (
 
 // NoteUtils ...
 type NoteUtils struct {
+	Notes []Note
 }
 
 // NewCliApp ...
@@ -20,8 +21,8 @@ func (n *NoteUtils) NewCliApp() *cli.App {
 	cliApp.Name = "cli based note app"
 	cliApp.Version = "1.0.0"
 	cliApp.EnableBashCompletion = true
-
 	cliApp.Commands = n.getCommands()
+	n.Notes = loadNotes()
 	return cliApp
 }
 
@@ -65,7 +66,23 @@ func (n *NoteUtils) getCommands() []*cli.Command {
 				if err != nil {
 					fmt.Println(err)
 				}
-				fmt.Println(note)
+				fmt.Println(note.Body)
+				return nil
+			},
+		},
+		{
+			Name:    "remove",
+			Aliases: []string{"rm"},
+			Usage:   "remove a note",
+			Flags: []cli.Flag{
+				&cli.StringFlag{
+					Name:    "title",
+					Usage:   "note title",
+					Aliases: []string{"t"},
+				},
+			},
+			Action: func(c *cli.Context) error {
+				n.removeNote(c.String("title"))
 				return nil
 			},
 		},
@@ -74,21 +91,21 @@ func (n *NoteUtils) getCommands() []*cli.Command {
 
 // addNote ...
 func (n *NoteUtils) addNote(title, body string) {
-	notes := loadNotes()
+	notes := n.Notes
 	for _, note := range notes {
 		if note.Title == title {
-			fmt.Println("note tiitle already taken")
+			fmt.Println("note title already taken")
 			return
 		}
 	}
 	notes = append(notes, Note{Title: title, Body: body})
-	saveNotes(notes)
+	n.saveNotes(notes)
 	fmt.Println("New note added!")
 }
 
 // ReadNote ...
 func (n *NoteUtils) readNote(title string) (Note, error) {
-	notes := loadNotes()
+	notes := n.Notes
 	for _, note := range notes {
 		if note.Title == title {
 			return note, nil
@@ -99,19 +116,37 @@ func (n *NoteUtils) readNote(title string) (Note, error) {
 
 // RemoveNote ...
 func (n *NoteUtils) removeNote(title string) {
-
+	notes := n.Notes
+	noteIndex := getNoteIndex(title)
+	if noteIndex == -1 {
+		fmt.Println("No notes found")
+	}
+	notes = append(notes[:noteIndex], notes[noteIndex+1:]...)
+	n.saveNotes(notes)
+	fmt.Println("Note removed!")
 }
 
-func saveNotes(n []Note) {
-	data, err := json.Marshal(n)
-	if err != nil {
-		log.Fatalln("Error marshaling data", n)
+func getNoteIndex(title string) int {
+	for index, note := range loadNotes() {
+		if note.Title == title {
+			return index
+		}
+	}
+	return -1
+}
 
+func (n *NoteUtils) saveNotes(notes []Note) {
+	data, err := json.Marshal(notes)
+	if err != nil {
+		log.Fatalln("Error marshaling data", notes)
+		return
 	}
 	err = ioutil.WriteFile("notes.json", data, 0644)
 	if err != nil {
 		log.Println(err)
+		return
 	}
+	n.Notes = loadNotes()
 
 }
 
